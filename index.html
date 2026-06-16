@@ -1,1 +1,971 @@
 <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<title>Overland Ready — Camp Meal Planning</title>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0F0F0C;
+    --surface: #1A1A14;
+    --surface2: #222219;
+    --surface3: #2A2A20;
+    --border: #2E2E24;
+    --border2: #3A3A2E;
+    --gold: #C8A84A;
+    --gold-dim: #8A7232;
+    --text: #E0DCC8;
+    --text-dim: #888070;
+    --accent: #C8711a;
+    --accent2: #E8871F;
+    --green: #4E7A52;
+    --red: #b03030;
+    --tag-bg: #2a1e08;
+    --tag-border: #5a3a0a;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: #0F0F0C !important; -webkit-text-size-adjust: 100%; }
+  body {
+    background: #0F0F0C !important;
+    color: #E0DCC8;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    min-height: 100vh;
+    padding-bottom: 72px;
+    -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  .app-header { background: var(--bg); border-bottom: 2px solid var(--border); padding: 12px 16px 10px; position: sticky; top: 0; z-index: 100; }
+  .app-brand { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+  .app-brand-icon { font-size: 20px; line-height: 1; }
+  .app-brand-name { font-family: 'Oswald', sans-serif; font-size: 22px; font-weight: 700; color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase; line-height: 1; }
+  .app-subtitle { font-family: 'IBM Plex Mono', monospace; font-size: 9px; letter-spacing: 0.15em; text-transform: uppercase; color: var(--text-dim); padding-left: 28px; margin-bottom: 8px; }
+  .trip-meta { display: flex; align-items: center; gap: 10px; }
+  .trip-name { font-family: 'IBM Plex Mono', monospace; font-size: 13px; font-weight: 400; color: var(--text); flex: 1; border-bottom: 1px solid transparent; min-width: 0; }
+  .trip-name:focus { outline: none; border-bottom-color: var(--gold-dim); }
+  .day-controls { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+  .btn-icon { background: var(--surface); border: 1px solid var(--border2); color: var(--text); width: 30px; height: 30px; border-radius: 4px; cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; }
+  .day-count { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--text-dim); white-space: nowrap; }
+
+  /* TABS */
+  .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg); position: sticky; top: 78px; z-index: 99; }
+  .tab { flex: 1; padding: 9px 4px; text-align: center; font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; color: var(--text-dim); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+  /* PANELS */
+  .panel { display: none; padding: 12px; }
+  .panel.active { display: block; }
+
+  /* DAY CARDS */
+  .day-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .day-header { background: var(--surface2); padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .day-label { font-family: 'Oswald', sans-serif; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 600; outline: none; display: block; }
+
+  /* MEAL SLOTS */
+  .meal-slot { border-bottom: 1px solid var(--border); padding: 10px 14px; }
+  .meal-slot:last-child { border-bottom: none; }
+  .meal-type { font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; margin-bottom: 7px; display: block; }
+  .meal-type.breakfast { color: var(--gold); }
+  .meal-type.lunch     { color: var(--green); }
+  .meal-type.dinner    { color: var(--accent); }
+  .meal-type.snacks    { color: var(--gold-dim); }
+  .meal-type.dessert   { color: #8A5A30; }
+  .meal-items { display: flex; flex-direction: column; gap: 4px; margin-bottom: 7px; }
+
+  /* SWIPEABLE ITEM WRAPPER */
+  .swipe-wrap {
+    position: relative;
+    border-radius: 7px;
+    overflow: hidden;
+    background: #b03030;
+  }
+  .swipe-delete-bg {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 80px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700;
+    letter-spacing: 0.05em; gap: 4px;
+    pointer-events: none;
+  }
+  .swipe-content {
+    position: relative;
+    background: var(--surface2);
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 8px 7px 10px;
+    transition: transform 0.15s ease;
+    will-change: transform;
+    z-index: 1;
+  }
+  .swipe-content.snap-back { transition: transform 0.25s ease; }
+  .swipe-content.deleting { transition: transform 0.2s ease, opacity 0.2s ease; opacity: 0; transform: translateX(-100%) !important; }
+
+  .item-name { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text); pointer-events: none; user-select: none; }
+  .item-tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid; white-space: nowrap; flex-shrink: 0; pointer-events: none; user-select: none; }
+  .item-tag.no-cook  { background: #0a1a0a; border-color: #1a4a1a; color: #4a9960; }
+  .item-tag.jetboil  { background: #1a0a00; border-color: #4a2a00; color: #c8711a; }
+  .item-tag.campfire { background: #1a0808; border-color: #4a1a1a; color: #c04040; }
+  .item-tag.cooler   { background: #0a0a1a; border-color: #1a1a4a; color: #6a8ac0; }
+
+  .dots-btn {
+    background: none; border: none; cursor: pointer;
+    padding: 4px 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 5px;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .dots-btn:active { background: #2a2a2a; }
+
+  .add-item-row { display: flex; gap: 6px; }
+  .add-input { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 10px; color: #e8e4dc; font-size: 13px; outline: none; -webkit-appearance: none; }
+  .add-input:focus { border-color: #c8711a; }
+  .add-input::placeholder { color: #383838; }
+  .tag-select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; padding: 7px 5px; color: #e8e4dc; font-size: 13px; -webkit-appearance: none; appearance: none; width: 36px; text-align: center; }
+  .btn-add { background: var(--gold); border: none; border-radius: 6px; color: var(--bg); font-size: 20px; width: 34px; height: 34px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .empty-hint { font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: var(--text-dim); padding: 2px 0 5px; }
+
+  /* LISTS */
+  .list-section { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 12px; overflow: hidden; }
+  .list-section-header { background: var(--surface2); padding: 11px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #252525; cursor: pointer; }
+  .list-section-title { font-family: 'Oswald', sans-serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+  .list-body { display: block; }
+  .list-body.collapsed { display: none; }
+  .progress-bar { height: 2px; background: var(--border); }
+  .progress-fill { height: 100%; background: var(--green); }
+  .list-items { padding: 2px 14px; }
+
+  /* List swipe rows */
+  .list-swipe-wrap {
+    position: relative;
+    border-radius: 0;
+    overflow: hidden;
+    background: #b03030;
+    border-bottom: 1px solid #1e1e1e;
+  }
+  .list-swipe-wrap:last-child { border-bottom: none; }
+  .list-delete-bg {
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 80px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 13px; font-weight: 700;
+    pointer-events: none;
+  }
+  .list-swipe-content {
+    position: relative;
+    background: var(--bg);
+    display: flex; align-items: center; gap: 10px;
+    padding: 9px 0;
+    transition: transform 0.15s ease;
+    will-change: transform;
+    z-index: 1;
+  }
+  .list-swipe-content.snap-back { transition: transform 0.25s ease; }
+  .list-swipe-content.deleting { transition: transform 0.2s ease, opacity 0.2s ease; opacity: 0; transform: translateX(-100%) !important; }
+
+  .list-checkbox { width: 20px; height: 20px; border: 1.5px solid var(--border2); border-radius: 3px; background: var(--surface); flex-shrink: 0; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .list-checkbox.checked { background: var(--green); border-color: var(--green); }
+  .list-checkbox.checked::after { content: '✓'; font-size: 12px; color: #fff; font-weight: 800; }
+  .list-item-name { flex: 1; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: var(--text); user-select: none; }
+  .list-item-name.checked { color: var(--text-dim); text-decoration: line-through; }
+
+  .add-list-row { display: flex; gap: 6px; padding: 8px 14px 10px; border-top: 1px solid #1e1e1e; }
+  .add-cat-btn { width: 100%; background: var(--bg); border: 1px dashed var(--border); border-radius: 4px; color: var(--text-dim); font-size: 13px; font-weight: 600; padding: 12px; cursor: pointer; margin-top: 2px; }
+
+  /* FOOTER */
+  .footer {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--bg); border-top: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: space-around;
+    padding: 10px 16px 18px;
+    z-index: 100;
+  }
+  .footer-btn {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    background: none; border: none; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; color: var(--text-dim); font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; font-weight: 400;
+    padding: 6px 16px; border-radius: 8px; min-width: 70px;
+    transition: color 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .footer-btn.available { color: var(--text); }
+  .footer-btn.available:active { background: #1e1e1e; }
+  .footer-btn.danger { color: #555; }
+  .footer-btn.danger.available { color: #884040; }
+  .footer-btn svg { display: block; }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.88); z-index: 200; align-items: flex-end; justify-content: center; }
+  .modal-overlay.active { display: flex; }
+  .modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px 16px 0 0; padding: 22px 16px 48px; width: 100%; max-width: 480px; }
+  .modal-title { font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-family: 'Oswald', sans-serif; color: var(--gold); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 14px; }
+  .modal-input { width: 100%; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; color: #e8e4dc; font-size: 16px; outline: none; margin-bottom: 10px; -webkit-appearance: none; }
+  .modal-input:focus { border-color: #c8711a; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 4px; }
+  .btn-save   { flex: 2; background: var(--gold); border: none; border-radius: 8px; color: var(--bg); font-size: 15px; font-weight: 700; padding: 13px; cursor: pointer; }
+  .btn-delete { flex: 1; background: #2a1010; border: 1px solid #5a1a1a; border-radius: 8px; color: #c05050; font-size: 15px; font-weight: 700; padding: 13px; cursor: pointer; }
+  .btn-cancel { flex: 1; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #666; font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; }
+
+  /* CONFIRM MODAL */
+  .confirm-modal { background: var(--surface); border: 1px solid var(--border2); border-radius: 16px 16px 0 0; padding: 24px 16px 48px; width: 100%; max-width: 480px; }
+  .confirm-title { font-size: 16px; font-weight: 700; color: #e8e4dc; margin-bottom: 8px; }
+  .confirm-body { font-size: 14px; color: #888; margin-bottom: 22px; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 8px; }
+  .btn-confirm-cancel { flex: 1; background: #1e1e1e; border: 1px solid #333; border-radius: 8px; color: #666; font-size: 15px; font-weight: 600; padding: 13px; cursor: pointer; }
+  .btn-confirm-ok { flex: 1; background: #2a1010; border: 1px solid #5a1a1a; border-radius: 8px; color: #c05050; font-size: 15px; font-weight: 700; padding: 13px; cursor: pointer; }
+</style>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#000000">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(e => console.warn('SW:', e));
+    });
+  }
+</script>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="app-brand">
+    <span class="app-brand-icon">⛰</span>
+    <span class="app-brand-name">Overland Ready</span>
+  </div>
+  <div class="app-subtitle">Camp Meal Planning</div>
+  <div class="trip-meta">
+    <div class="trip-name" id="tripName" contenteditable="true" spellcheck="false">Solo Overland — June</div>
+    <div class="day-controls">
+      <button class="btn-icon" onclick="removeDayPrompt()">−</button>
+      <span class="day-count" id="dayCount">4 days</span>
+      <button class="btn-icon" onclick="addDay()">+</button>
+    </div>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('meals')">Meals</div>
+  <div class="tab" onclick="switchTab('shopping')">Shopping</div>
+  <div class="tab" onclick="switchTab('packing')">Packing</div>
+</div>
+
+<div class="panel active" id="panel-meals"></div>
+<div class="panel" id="panel-shopping"><div id="shopping-sections"></div></div>
+<div class="panel" id="panel-packing"><div id="packing-sections"></div></div>
+
+<!-- FOOTER -->
+<div class="footer">
+  <button class="footer-btn" id="btn-undo" onclick="doUndo()">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M3 8H13C15.8 8 18 10.2 18 13C18 15.8 15.8 18 13 18H7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M6 5L3 8L6 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Undo
+  </button>
+  <button class="footer-btn" id="btn-redo" onclick="doRedo()">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M17 8H7C4.2 8 2 10.2 2 13C2 15.8 4.2 18 7 18H13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+      <path d="M14 5L17 8L14 11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Redo
+  </button>
+  <button class="footer-btn danger" id="btn-clear" onclick="promptClearAll()">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M4 6H16M8 6V4H12V6M7 9V16M10 9V16M13 9V16M5 6L6 17H14L15 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    Clear All
+  </button>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title" id="editModalTitle">Edit Item</div>
+    <input class="modal-input" id="editInput" type="text" placeholder="Item name" autocomplete="off">
+    <select class="modal-input" id="editTag">
+      <option value="">No tag</option>
+      <option value="jetboil">🔥 Jetboil</option>
+      <option value="no-cook">✓ No Cook</option>
+      <option value="campfire">🏕 Campfire</option>
+      <option value="cooler">❄️ Cooler</option>
+    </select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+      <button class="btn-delete" onclick="deleteFromModal()">Delete</button>
+      <button class="btn-save" onclick="saveEdit()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONFIRM CLEAR MODAL -->
+<div class="modal-overlay" id="confirmModal">
+  <div class="confirm-modal">
+    <div class="confirm-title" id="confirmTitle">Clear everything?</div>
+    <div class="confirm-body" id="confirmBody">This removes all days and items leaving a blank slate. Can be undone with Undo.</div>
+    <div class="confirm-actions">
+      <button class="btn-confirm-cancel" onclick="closeConfirm()">Cancel</button>
+      <button class="btn-confirm-ok" id="confirmOkBtn" onclick="confirmAction()">Clear All</button>
+    </div>
+    <button style="width:100%;margin-top:10px;background:none;border:1px solid #333;border-radius:8px;color:#888;font-size:14px;padding:12px;cursor:pointer;" onclick="promptRestore()">↺ Restore Defaults Instead</button>
+  </div>
+</div>
+
+<script>
+const MEAL_TYPES = ['breakfast','lunch','dinner','snacks','dessert'];
+const TAG_LABELS = {jetboil:'🔥 Jetboil','no-cook':'✓ No Cook',campfire:'🏕 Campfire',cooler:'❄️ Cooler'};
+
+const defaultState = {
+  tripName: 'Solo Overland — June',
+  days: [
+    { label: 'Day 1', meals: {
+      breakfast: [],
+      lunch: [
+        { name: 'Deli meat + cheese tortilla wrap', tag: 'no-cook' },
+        { name: 'Apple + peanut butter packets', tag: 'no-cook' },
+        { name: 'Nuts', tag: 'no-cook' }
+      ],
+      dinner: [
+        { name: 'Pre-cooked taco meat', tag: 'jetboil' },
+        { name: 'Flour tortillas + shredded cheese', tag: 'no-cook' },
+        { name: 'Hot sauce', tag: 'no-cook' }
+      ],
+      snacks: [{ name: 'Trail mix', tag: 'no-cook' }, { name: 'Jerky', tag: 'no-cook' }],
+      dessert: [{ name: "S'mores", tag: 'campfire' }]
+    }},
+    { label: 'Day 2', meals: {
+      breakfast: [
+        { name: 'Egg scramble burrito (pre-mixed)', tag: 'jetboil' },
+        { name: 'Hot sauce', tag: 'no-cook' }
+      ],
+      lunch: [
+        { name: 'Deli meat + cheese tortilla wrap', tag: 'no-cook' },
+        { name: 'Trail mix', tag: 'no-cook' },
+        { name: 'Cheese stick', tag: 'cooler' }
+      ],
+      dinner: [
+        { name: 'Pre-cooked spaghetti meat sauce', tag: 'jetboil' },
+        { name: 'Pre-cooked pasta (vacuum sealed)', tag: 'jetboil' }
+      ],
+      snacks: [{ name: 'Protein bar', tag: 'no-cook' }, { name: 'Apple + peanut butter', tag: 'no-cook' }],
+      dessert: [{ name: "S'mores", tag: 'campfire' }]
+    }},
+    { label: 'Day 3', meals: {
+      breakfast: [
+        { name: 'Egg scramble burrito (pre-mixed)', tag: 'jetboil' },
+        { name: 'Hot sauce', tag: 'no-cook' }
+      ],
+      lunch: [
+        { name: 'Deli meat + cheese tortilla wrap', tag: 'no-cook' },
+        { name: 'Apple + peanut butter packets', tag: 'no-cook' },
+        { name: 'Trail mix', tag: 'no-cook' }
+      ],
+      dinner: [{ name: 'Hot dogs', tag: 'campfire' }, { name: 'Pre-cooked chili (vacuum sealed)', tag: 'jetboil' }],
+      snacks: [{ name: 'Nuts', tag: 'no-cook' }, { name: 'Chocolate / candy', tag: 'no-cook' }],
+      dessert: [{ name: "S'mores", tag: 'campfire' }]
+    }},
+    { label: 'Day 4', meals: {
+      breakfast: [
+        { name: 'Instant oatmeal OR protein bar', tag: 'jetboil' },
+        { name: 'Trail mix (on the go)', tag: 'no-cook' }
+      ],
+      lunch: [
+        { name: 'Deli meat + cheese tortilla wrap', tag: 'no-cook' },
+        { name: 'Nuts', tag: 'no-cook' },
+        { name: 'Energy bar', tag: 'no-cook' }
+      ],
+      dinner: [],
+      snacks: [{ name: 'Remaining snacks', tag: 'no-cook' }],
+      dessert: []
+    }}
+  ],
+  shopping: [
+    { title: 'Proteins', collapsed: false, items: [
+      { name: 'Ground beef (taco meat + spaghetti sauce)', checked: false },
+      { name: 'Hot dogs', checked: false },
+      { name: 'Deli meat — turkey or salami', checked: false },
+      { name: 'Eggs (6–8 for scramble mix)', checked: false }
+    ]},
+    { title: 'Dairy & Cheese', collapsed: false, items: [
+      { name: 'Shredded cheese (tacos + spaghetti)', checked: false },
+      { name: 'Sliced cheese (wraps)', checked: false },
+      { name: 'Cheese sticks (snacks)', checked: false },
+      { name: 'Butter or oil (scramble)', checked: false }
+    ]},
+    { title: 'Bread & Carbs', collapsed: false, items: [
+      { name: 'Flour tortillas (large pack)', checked: false },
+      { name: 'Spaghetti pasta (pre-cook at home)', checked: false },
+      { name: 'Instant oatmeal packets (3)', checked: false }
+    ]},
+    { title: 'Produce', collapsed: false, items: [
+      { name: 'Apples (3)', checked: false }
+    ]},
+    { title: 'Pantry & Canned', collapsed: false, items: [
+      { name: 'Canned or pre-cooked chili', checked: false },
+      { name: 'Jarred spaghetti sauce', checked: false },
+      { name: 'Hot sauce packets', checked: false },
+      { name: 'Peanut butter single-serve packets', checked: false }
+    ]},
+    { title: 'Snacks & Sweets', collapsed: false, items: [
+      { name: 'Trail mix', checked: false },
+      { name: 'Nuts', checked: false },
+      { name: 'Jerky', checked: false },
+      { name: 'Protein bars (3)', checked: false },
+      { name: 'Energy bars (backup)', checked: false },
+      { name: 'Graham crackers', checked: false },
+      { name: 'Chocolate bars', checked: false },
+      { name: 'Marshmallows', checked: false },
+      { name: 'Mini candy / chocolate (camp sweets)', checked: false }
+    ]}
+  ],
+  packing: [
+    { title: 'Jetboil Kit', collapsed: false, items: [
+      { name: 'Jetboil Minimo stove + cup', checked: false },
+      { name: 'Butane/propane canister (440g)', checked: false },
+      { name: 'Backup lighter', checked: false },
+      { name: 'Spork', checked: false }
+    ]},
+    { title: 'Food — Cooler', collapsed: false, items: [
+      { name: 'Vacuum-sealed taco meat', checked: false },
+      { name: 'Vacuum-sealed spaghetti sauce', checked: false },
+      { name: 'Vacuum-sealed cooked pasta', checked: false },
+      { name: 'Vacuum-sealed egg scramble mix', checked: false },
+      { name: 'Vacuum-sealed chili', checked: false },
+      { name: 'Hot dogs', checked: false },
+      { name: 'Deli meat', checked: false },
+      { name: 'Sliced cheese', checked: false },
+      { name: 'Cheese sticks', checked: false },
+      { name: 'Butter / oil', checked: false }
+    ]},
+    { title: 'Food — Dry Storage', collapsed: false, items: [
+      { name: 'Flour tortillas', checked: false },
+      { name: 'Shredded cheese (shelf pack)', checked: false },
+      { name: 'Instant oatmeal packets', checked: false },
+      { name: 'Hot sauce', checked: false },
+      { name: 'Peanut butter packets', checked: false },
+      { name: 'Apples', checked: false },
+      { name: 'Trail mix', checked: false },
+      { name: 'Nuts', checked: false },
+      { name: 'Jerky', checked: false },
+      { name: 'Protein bars', checked: false },
+      { name: 'Energy bars', checked: false },
+      { name: "S'mores kit (grahams, chocolate, marshmallows)", checked: false },
+      { name: 'Candy / chocolate snacks', checked: false }
+    ]},
+    { title: 'Kitchen Misc', collapsed: false, items: [
+      { name: 'Paper towels', checked: false },
+      { name: 'Trash bags', checked: false },
+      { name: 'Pocket knife', checked: false },
+      { name: 'Cooler with ice', checked: false }
+    ]}
+  ]
+};
+
+// ── STATE & HISTORY ───────────────────────────────────────────────────────────
+let state = JSON.parse(localStorage.getItem('campMealPlanner5') || 'null') || JSON.parse(JSON.stringify(defaultState));
+let history = [JSON.stringify(state)];
+let historyIndex = 0;
+
+function save() {
+  localStorage.setItem('campMealPlanner5', JSON.stringify(state));
+}
+
+function pushHistory() {
+  // Trim any redo states
+  history = history.slice(0, historyIndex + 1);
+  history.push(JSON.stringify(state));
+  if (history.length > 50) history.shift();
+  historyIndex = history.length - 1;
+  save();
+  updateFooter();
+}
+
+function doUndo() {
+  if (historyIndex <= 0) return;
+  historyIndex--;
+  state = JSON.parse(history[historyIndex]);
+  save(); render(); updateFooter();
+}
+
+function doRedo() {
+  if (historyIndex >= history.length - 1) return;
+  historyIndex++;
+  state = JSON.parse(history[historyIndex]);
+  save(); render(); updateFooter();
+}
+
+function updateFooter() {
+  const undoBtn = document.getElementById('btn-undo');
+  const redoBtn = document.getElementById('btn-redo');
+  const clearBtn = document.getElementById('btn-clear');
+  undoBtn.classList.toggle('available', historyIndex > 0);
+  redoBtn.classList.toggle('available', historyIndex < history.length - 1);
+  clearBtn.classList.toggle('available', true);
+}
+
+let confirmMode = 'clear'; // 'clear' or 'restore'
+
+function promptClearAll() {
+  confirmMode = 'clear';
+  document.getElementById('confirmTitle').textContent = 'Clear everything?';
+  document.getElementById('confirmBody').textContent = 'Removes all days and items, leaving a blank slate. Can be undone.';
+  document.getElementById('confirmOkBtn').textContent = 'Clear All';
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+function promptRestore() {
+  confirmMode = 'restore';
+  document.getElementById('confirmTitle').textContent = 'Restore defaults?';
+  document.getElementById('confirmBody').textContent = 'Resets to the original 4-day trip plan. Your current data will be saved in Undo.';
+  document.getElementById('confirmOkBtn').textContent = 'Restore';
+  document.getElementById('confirmModal').classList.add('active');
+}
+
+function closeConfirm() { document.getElementById('confirmModal').classList.remove('active'); }
+
+function confirmAction() {
+  if (confirmMode === 'clear') {
+    state = {
+      tripName: document.getElementById('tripName').textContent.trim() || 'My Trip',
+      days: [],
+      shopping: [],
+      packing: []
+    };
+  } else {
+    state = JSON.parse(JSON.stringify(defaultState));
+  }
+  pushHistory(); closeConfirm(); updateDayCount(); render();
+}
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+let activeTab = 'meals';
+function switchTab(tab) {
+  activeTab = tab;
+  document.querySelectorAll('.tab').forEach((t,i) =>
+    t.classList.toggle('active', ['meals','shopping','packing'][i] === tab));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  render();
+}
+
+// ── DAYS ──────────────────────────────────────────────────────────────────────
+function addDay() {
+  const n = state.days.length + 1;
+  state.days.push({ label:`Day ${n}`, meals:{breakfast:[],lunch:[],dinner:[],snacks:[],dessert:[]} });
+  pushHistory(); renderMeals(); updateDayCount();
+}
+function removeDayPrompt() {
+  if (state.days.length <= 1) return;
+  if (confirm(`Remove ${state.days[state.days.length-1].label}?`)) {
+    state.days.pop(); pushHistory(); renderMeals(); updateDayCount();
+  }
+}
+function updateDayCount() {
+  const n = state.days.length;
+  document.getElementById('dayCount').textContent = `${n} day${n!==1?'s':''}`;
+}
+
+// ── SWIPE TO DELETE ───────────────────────────────────────────────────────────
+const SWIPE_THRESHOLD = 80;
+const SWIPE_AXIS_LOCK = 8; // px vertical movement before we decide it's a scroll
+
+function attachSwipe(contentEl, onDelete) {
+  let startX = 0, startY = 0;
+  let currentX = 0;
+  let dragging = false;
+  let axisLocked = false; // true=horizontal swipe, false=scroll
+  let axisDecided = false;
+
+  function onTouchStart(e) {
+    const t = e.touches[0];
+    startX = t.clientX;
+    startY = t.clientY;
+    currentX = 0;
+    dragging = true;
+    axisLocked = false;
+    axisDecided = false;
+    contentEl.style.transition = 'none';
+  }
+
+  function onTouchMove(e) {
+    if (!dragging) return;
+    const t = e.touches[0];
+    const dx = t.clientX - startX;
+    const dy = t.clientY - startY;
+
+    if (!axisDecided) {
+      if (Math.abs(dy) > SWIPE_AXIS_LOCK) {
+        // Vertical — it's a scroll, abandon
+        dragging = false;
+        contentEl.style.transform = '';
+        return;
+      }
+      if (Math.abs(dx) > SWIPE_AXIS_LOCK) {
+        axisLocked = true;
+        axisDecided = true;
+      } else {
+        return; // not decided yet
+      }
+    }
+
+    if (!axisLocked) return;
+
+    // Only allow left swipe
+    currentX = Math.min(0, dx);
+    contentEl.style.transform = `translateX(${currentX}px)`;
+    e.preventDefault(); // prevent scroll only when swiping horizontally
+  }
+
+  function onTouchEnd() {
+    if (!dragging || !axisLocked) { dragging = false; return; }
+    dragging = false;
+
+    if (currentX < -SWIPE_THRESHOLD) {
+      // Commit delete
+      contentEl.classList.add('deleting');
+      setTimeout(onDelete, 200);
+    } else {
+      // Snap back
+      contentEl.classList.add('snap-back');
+      contentEl.style.transform = '';
+      setTimeout(() => contentEl.classList.remove('snap-back'), 260);
+    }
+  }
+
+  contentEl.addEventListener('touchstart', onTouchStart, { passive: true });
+  contentEl.addEventListener('touchmove', onTouchMove, { passive: false });
+  contentEl.addEventListener('touchend', onTouchEnd, { passive: true });
+  contentEl.addEventListener('touchcancel', onTouchEnd, { passive: true });
+}
+
+// ── DOTS ICON SVG ─────────────────────────────────────────────────────────────
+function dotsIconSVG() {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width','16'); svg.setAttribute('height','16');
+  svg.setAttribute('viewBox','0 0 4 16');
+  ['2,2','2,8','2,14'].forEach(pos => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', pos.split(',')[0]);
+    c.setAttribute('cy', pos.split(',')[1]);
+    c.setAttribute('r','1.5');
+    c.setAttribute('fill','#555');
+    svg.appendChild(c);
+  });
+  return svg;
+}
+
+// ── MEALS ─────────────────────────────────────────────────────────────────────
+function renderMeals() {
+  const panel = document.getElementById('panel-meals');
+  panel.innerHTML = '';
+
+  state.days.forEach((day, di) => {
+    const card = document.createElement('div');
+    card.className = 'day-card';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'day-header';
+    const lbl = document.createElement('span');
+    lbl.className = 'day-label';
+    lbl.contentEditable = 'true';
+    lbl.spellcheck = false;
+    lbl.textContent = day.label;
+    lbl.addEventListener('blur', () => {
+      state.days[di].label = lbl.textContent.trim() || `Day ${di+1}`;
+      pushHistory();
+    });
+    hdr.appendChild(lbl);
+    card.appendChild(hdr);
+
+    MEAL_TYPES.forEach(type => {
+      const slot = document.createElement('div');
+      slot.className = 'meal-slot';
+      const typeEl = document.createElement('span');
+      typeEl.className = `meal-type ${type}`;
+      typeEl.textContent = type;
+      slot.appendChild(typeEl);
+
+      const itemsDiv = document.createElement('div');
+      itemsDiv.className = 'meal-items';
+      const items = day.meals[type] || [];
+
+      if (!items.length) {
+        const hint = document.createElement('div');
+        hint.className = 'empty-hint';
+        hint.textContent = 'Swipe left to delete · ··· to edit';
+        itemsDiv.appendChild(hint);
+      } else {
+        items.forEach((item, ii) => {
+          // Outer wrapper (shows red bg)
+          const wrap = document.createElement('div');
+          wrap.className = 'swipe-wrap';
+
+          const bg = document.createElement('div');
+          bg.className = 'swipe-delete-bg';
+          bg.textContent = 'DELETE';
+          wrap.appendChild(bg);
+
+          // Sliding content
+          const content = document.createElement('div');
+          content.className = 'swipe-content';
+
+          const name = document.createElement('span');
+          name.className = 'item-name';
+          name.textContent = item.name;
+          content.appendChild(name);
+
+          if (item.tag) {
+            const tag = document.createElement('span');
+            tag.className = `item-tag ${item.tag}`;
+            tag.textContent = TAG_LABELS[item.tag] || item.tag;
+            content.appendChild(tag);
+          }
+
+          const dotsBtn = document.createElement('button');
+          dotsBtn.className = 'dots-btn';
+          dotsBtn.setAttribute('aria-label', 'Edit');
+          dotsBtn.appendChild(dotsIconSVG());
+          dotsBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            openEditMealItem(di, type, ii);
+          });
+          content.appendChild(dotsBtn);
+
+          // Swipe to delete
+          attachSwipe(content, () => {
+            const removed = state.days[di].meals[type].splice(ii, 1)[0];
+            pushHistory(); renderMeals();
+          });
+
+          wrap.appendChild(content);
+          itemsDiv.appendChild(wrap);
+        });
+      }
+      slot.appendChild(itemsDiv);
+
+      // Add row
+      const addRow = document.createElement('div');
+      addRow.className = 'add-item-row';
+      const inp = document.createElement('input');
+      inp.className = 'add-input'; inp.placeholder = 'Add item…'; inp.autocomplete = 'off';
+      const tagSel = document.createElement('select');
+      tagSel.className = 'tag-select';
+      tagSel.innerHTML = '<option value="">—</option><option value="jetboil">🔥</option><option value="no-cook">✓</option><option value="campfire">🏕</option><option value="cooler">❄️</option>';
+      const addBtn = document.createElement('button');
+      addBtn.className = 'btn-add'; addBtn.textContent = '+';
+      const doAdd = () => {
+        const n = inp.value.trim(); if (!n) return;
+        state.days[di].meals[type].push({name:n, tag:tagSel.value});
+        inp.value=''; tagSel.value='';
+        pushHistory(); renderMeals();
+      };
+      inp.addEventListener('keydown', e => { if(e.key==='Enter') doAdd(); });
+      addBtn.addEventListener('click', doAdd);
+      addRow.appendChild(inp); addRow.appendChild(tagSel); addRow.appendChild(addBtn);
+      slot.appendChild(addRow);
+      card.appendChild(slot);
+    });
+
+    panel.appendChild(card);
+  });
+}
+
+// ── EDIT MODAL ────────────────────────────────────────────────────────────────
+let editCtx = null;
+
+function openEditMealItem(di, type, ii) {
+  const item = state.days[di].meals[type][ii];
+  editCtx = {di, type, ii, mode:'meal'};
+  document.getElementById('editModalTitle').textContent = `Edit — ${type}`;
+  document.getElementById('editInput').value = item.name;
+  document.getElementById('editTag').value = item.tag||'';
+  document.getElementById('editTag').style.display = '';
+  document.getElementById('editModal').classList.add('active');
+  setTimeout(() => document.getElementById('editInput').focus(), 150);
+}
+
+function openEditListItem(listType, si, ii) {
+  const item = state[listType][si].items[ii];
+  editCtx = {listType, si, ii, mode:'list'};
+  document.getElementById('editModalTitle').textContent = 'Edit Item';
+  document.getElementById('editInput').value = item.name;
+  document.getElementById('editTag').style.display = 'none';
+  document.getElementById('editModal').classList.add('active');
+  setTimeout(() => document.getElementById('editInput').focus(), 150);
+}
+
+function closeEditModal() {
+  document.getElementById('editModal').classList.remove('active');
+  document.getElementById('editTag').style.display = '';
+  editCtx = null;
+}
+
+function saveEdit() {
+  if (!editCtx) return;
+  const name = document.getElementById('editInput').value.trim();
+  if (!name) return;
+  if (editCtx.mode === 'meal') {
+    state.days[editCtx.di].meals[editCtx.type][editCtx.ii].name = name;
+    state.days[editCtx.di].meals[editCtx.type][editCtx.ii].tag = document.getElementById('editTag').value;
+    renderMeals();
+  } else {
+    state[editCtx.listType][editCtx.si].items[editCtx.ii].name = name;
+    renderLists();
+  }
+  pushHistory(); closeEditModal();
+}
+
+function deleteFromModal() {
+  if (!editCtx) return;
+  if (editCtx.mode === 'meal') {
+    state.days[editCtx.di].meals[editCtx.type].splice(editCtx.ii, 1);
+    renderMeals();
+  } else {
+    state[editCtx.listType][editCtx.si].items.splice(editCtx.ii, 1);
+    renderLists();
+  }
+  pushHistory(); closeEditModal();
+}
+
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) closeEditModal();
+});
+document.getElementById('confirmModal').addEventListener('click', function(e) {
+  if (e.target === this) closeConfirm();
+});
+
+// ── LISTS ─────────────────────────────────────────────────────────────────────
+function renderLists() { renderList('shopping'); renderList('packing'); }
+
+function renderList(listType) {
+  const container = document.getElementById(`${listType}-sections`);
+  if (!container) return;
+  container.innerHTML = '';
+
+  state[listType].forEach((section, si) => {
+    const checked = section.items.filter(i=>i.checked).length;
+    const total = section.items.length;
+    const pct = total ? Math.round((checked/total)*100) : 0;
+
+    const block = document.createElement('div');
+    block.className = 'list-section';
+
+    const hdr = document.createElement('div');
+    hdr.className = 'list-section-header';
+    hdr.innerHTML = `
+      <span class="list-section-title">${section.title}</span>
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:11px;color:#555">${checked}/${total}</span>
+        <span style="color:#3a3a3a;font-size:11px;">${section.collapsed?'▶':'▼'}</span>
+      </span>`;
+    hdr.addEventListener('click', () => {
+      state[listType][si].collapsed = !state[listType][si].collapsed;
+      pushHistory(); renderLists();
+    });
+    block.appendChild(hdr);
+
+    const body = document.createElement('div');
+    body.className = `list-body${section.collapsed?' collapsed':''}`;
+    const bar = document.createElement('div');
+    bar.className = 'progress-bar';
+    bar.innerHTML = `<div class="progress-fill" style="width:${pct}%"></div>`;
+    body.appendChild(bar);
+
+    const itemsDiv = document.createElement('div');
+    itemsDiv.className = 'list-items';
+
+    section.items.forEach((item, ii) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'list-swipe-wrap';
+
+      const bg = document.createElement('div');
+      bg.className = 'list-delete-bg';
+      bg.textContent = 'DELETE';
+      wrap.appendChild(bg);
+
+      const content = document.createElement('div');
+      content.className = 'list-swipe-content';
+
+      const chk = document.createElement('div');
+      chk.className = `list-checkbox${item.checked?' checked':''}`;
+      chk.addEventListener('click', e => {
+        e.stopPropagation();
+        state[listType][si].items[ii].checked = !item.checked;
+        pushHistory(); renderLists();
+      });
+
+      const nameEl = document.createElement('span');
+      nameEl.className = `list-item-name${item.checked?' checked':''}`;
+      nameEl.textContent = item.name;
+
+      const dotsBtn = document.createElement('button');
+      dotsBtn.className = 'dots-btn';
+      dotsBtn.setAttribute('aria-label','Edit');
+      dotsBtn.appendChild(dotsIconSVG());
+      dotsBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        openEditListItem(listType, si, ii);
+      });
+
+      content.appendChild(chk);
+      content.appendChild(nameEl);
+      content.appendChild(dotsBtn);
+
+      attachSwipe(content, () => {
+        state[listType][si].items.splice(ii, 1);
+        pushHistory(); renderLists();
+      });
+
+      wrap.appendChild(content);
+      itemsDiv.appendChild(wrap);
+    });
+
+    body.appendChild(itemsDiv);
+
+    const addRow = document.createElement('div');
+    addRow.className = 'add-list-row';
+    const inp = document.createElement('input');
+    inp.className = 'add-input'; inp.placeholder = 'Add item…'; inp.autocomplete = 'off';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'btn-add'; addBtn.textContent = '+';
+    const doAdd = () => {
+      const n = inp.value.trim(); if (!n) return;
+      state[listType][si].items.push({name:n, checked:false});
+      inp.value=''; pushHistory(); renderLists();
+    };
+    inp.addEventListener('keydown', e => { if(e.key==='Enter') doAdd(); });
+    addBtn.addEventListener('click', doAdd);
+    addRow.appendChild(inp); addRow.appendChild(addBtn);
+    body.appendChild(addRow);
+    block.appendChild(body);
+    container.appendChild(block);
+  });
+
+  const addCat = document.createElement('button');
+  addCat.className = 'add-cat-btn';
+  addCat.textContent = '+ Add Category';
+  addCat.addEventListener('click', () => {
+    const name = prompt('Category name:');
+    if (name) { state[listType].push({title:name, collapsed:false, items:[]}); pushHistory(); renderLists(); }
+  });
+  container.appendChild(addCat);
+}
+
+// ── TRIP NAME ─────────────────────────────────────────────────────────────────
+document.getElementById('tripName').addEventListener('blur', function() {
+  state.tripName = this.textContent.trim() || 'My Trip'; pushHistory();
+});
+
+// ── INIT ──────────────────────────────────────────────────────────────────────
+function render() { if(activeTab==='meals') renderMeals(); else renderLists(); }
+updateDayCount();
+updateFooter();
+renderMeals();
+renderLists();
+</script>
+</body>
+</html>
